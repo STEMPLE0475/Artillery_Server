@@ -1,9 +1,9 @@
-#pragma once
+ï»¿#pragma once
 
 #ifdef _WIN32
 #define FD_SETSIZE 5096 // http://blog.naver.com/znfgkro1/220175848048
 #else
-// ¸®´ª½º¿¡¼­´Â 1024±îÁö¸¸  https://qiita.com/fujinochan/items/2337ce48a998cf67966b
+// ë¦¬ëˆ…ìŠ¤ì—ì„œëŠ” 1024ê¹Œì§€ë§Œ  https://qiita.com/fujinochan/items/2337ce48a998cf67966b
 #endif
 
 #pragma comment(lib, "ws2_32")
@@ -31,7 +31,7 @@ namespace NServerNetLib
 
 		void Run() override;
 
-		RecvPacketInfo GetPacketInfo() override;
+		RecvPacketInfo DispatchPacket() override;
 
 		void Release() override;
 

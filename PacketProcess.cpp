@@ -1,4 +1,4 @@
-#include <cstring>
+ï»¿#include <cstring>
 
 #include "NetLib/ILog.h"
 #include "NetLib/TcpNetwork.h"
@@ -7,24 +7,28 @@
 //#include "Room.h"
 #include "RoomManager.h"
 #include "PacketProcess.h"
+#include "GameManager.h"
+#include "DBManager.h";
 
 using LOG_TYPE = NServerNetLib::LOG_TYPE;
 using ServerConfig = NServerNetLib::ServerConfig;
 
-// ¼ö½ÅÇÑ ÆĞÅ¶À» Ã³¸®ÇÏ°í, ¸Â´Â ÇÔ¼ö¸¦ ¤Ç¤¾ÃâÇÔ.
+// ìˆ˜ì‹ í•œ íŒ¨í‚·ì„ ì²˜ë¦¬í•˜ê³ , ë§ëŠ” í•¨ìˆ˜ë¥¼ ã…—ã…ì¶œí•¨.
 
 PacketProcess::PacketProcess() {}
 PacketProcess::~PacketProcess() {}
 
-void PacketProcess::Init(TcpNet* pNetwork, UserManager* pUserMgr, RoomManager* pLobbyMgr, ServerConfig* pConfig, ILog* pLogger)
+void PacketProcess::Init(TcpNet* pNetwork, UserManager* pUserMgr, RoomManager* pLobbyMgr, ServerConfig* pConfig, ILog* pLogger, DBManager* pDBMgr, GameManager* pGameMgr)
 {
 	m_pRefLogger = pLogger;
 	m_pRefNetwork = pNetwork;
 	m_pRefUserMgr = pUserMgr;
 	m_pRefRoomMgr = pLobbyMgr;
+	m_pRefDBMgr = pDBMgr;
+	m_pRefGameMgr = pGameMgr;
 }
 
-//¸ğµç ÀÛ¾÷À» ¿©±â¼­ Ã³¸®ÇÔ. »õ·Î¿î ÆĞÅ¶ÀÌ ¿À¸é ÆĞÅ¶À» ¾î¶»°Ô Ã³¸®ÇÏ´ÂÁö¸¦ Á¤ÇÔ.
+//ëª¨ë“  ì‘ì—…ì„ ì—¬ê¸°ì„œ ì²˜ë¦¬í•¨. ìƒˆë¡œìš´ íŒ¨í‚·ì´ ì˜¤ë©´ íŒ¨í‚·ì„ ì–´ë–»ê²Œ ì²˜ë¦¬í•˜ëŠ”ì§€ë¥¼ ì •í•¨.
 void PacketProcess::Process(PacketInfo packetInfo)
 {
 	using netLibPacketId = NServerNetLib::PACKET_ID;
@@ -32,22 +36,34 @@ void PacketProcess::Process(PacketInfo packetInfo)
 
 	auto packetId = packetInfo.PacketId;
 
-	//»ó¿ë ¼­ºñ½º¿¡¼­ switch ¹®À» »ç¿ëÇÏ¸é ³Ê¹« ±æ¾îÁü. ÇÔ¼ö Æ÷ÀÎÅÍ·Î °¡µ¶¼º Çâ»ó ½ÃÅ³ ¼ö ÀÖÀ½.
+	//ìƒìš© ì„œë¹„ìŠ¤ì—ì„œ switch ë¬¸ì„ ì‚¬ìš©í•˜ë©´ ë„ˆë¬´ ê¸¸ì–´ì§. í•¨ìˆ˜ í¬ì¸í„°ë¡œ ê°€ë…ì„± í–¥ìƒ ì‹œí‚¬ ìˆ˜ ìˆìŒ.
 	switch (packetId)
 	{
-		//Å¬¶óÀÌ¾ğÆ®°¡ º¸³½ °ÍÀº ¾Æ´Ñµ¥, ½Ã¹Ä¿¡ ´ëÇØ¼­ ¶óÀÌºê·¯¸®¿¡ ¾Ë·ÁÁÖ´Â ¿ªÇÒ??
 	case (int)netLibPacketId::NTF_SYS_CONNECT_SESSION:
 		NtfSysConnctSession(packetInfo);
 		break;
 	case (int)netLibPacketId::NTF_SYS_CLOSE_SESSION:
 		NtfSysCloseSession(packetInfo);
 		break;
-		//¿©±â¼­ºÎÅÍ°¡ ÁøÂ¥ Å¬¶ó°¡ º¸³½ ÆĞÅ¶À» ¾Ë¾Æ¼­ Ã³¸®ÇÏ´Â ¹æ¹ı.
+		//ì—¬ê¸°ì„œë¶€í„°ê°€ ì§„ì§œ í´ë¼ê°€ ë³´ë‚¸ íŒ¨í‚·ì„ ì•Œì•„ì„œ ì²˜ë¦¬í•˜ëŠ” ë°©ë²•.
 	case (int)commonPacketId::LOGIN_REQ:
 		Login(packetInfo);
 		break;
-		//ÀÌ°É µû¶ó¼­ ¸¸µé±â. ¹æ ¸¸µé±â ¹æ ³ª°¡±â µî.
+	case (int)commonPacketId::REGISTER_REQ:
+		Register(packetInfo);
+		break;
+		//ì´ê±¸ ë”°ë¼ì„œ ë§Œë“¤ê¸°. ë°© ë§Œë“¤ê¸° ë°© ë‚˜ê°€ê¸° ë“±.
+	case (int)commonPacketId::ECHO_CHAT_REQ:
+		EchoChat(packetInfo);
+		break;
+	case (int)commonPacketId::MATCH_REQUEST_REQ:
+		m_pRefGameMgr->OnMatchRequest(packetInfo.SessionIndex);
+		break;
+
+	case (int)commonPacketId::FIRE_START_REQ:
+		FireStart(packetInfo);
 	}
+
 
 }
 
@@ -73,22 +89,163 @@ ERROR_CODE PacketProcess::NtfSysCloseSession(PacketInfo packetInfo)
 
 ERROR_CODE PacketProcess::Login(PacketInfo packetInfo)
 {
-	// ÆĞ½º¿öµå´Â ¹«Á¶°Ç pass ÇØÁØ´Ù.
-	// ID Áßº¹ÀÌ¶ó¸é ¿¡·¯ Ã³¸®ÇÑ´Ù.
-	PktLogInRes resPkt;
+	// 1. ìš”ì²­ íŒ¨í‚· íŒŒì‹±
 	auto reqPkt = (PktLogInReq*)packetInfo.pRefData;
+	m_pRefLogger->Write(LOG_TYPE::L_INFO, "%s | Login. sessionIndex(%d), ID(%s) | ë¡œê·¸ì¸ ìš”ì²­ ìˆ˜ì‹ ",
+		__FUNCTION__, packetInfo.SessionIndex, reqPkt->szID);
 
-	//ÀÏ´Ü DB¸¦ ¿¬µ¿ÇÏÁö´Â ¾Ê¾Ò±â ¶§¹®¿¡, DB È£Ãâ ÆĞ½º¿öµå ¾øÀÌ Áßº¹ Ã¼Å©¸¸ ÇÔ.
-	auto addRet = m_pRefUserMgr->AddUser(packetInfo.SessionIndex, reqPkt->szID);
+	// 2. ì‘ë‹µ íŒ¨í‚· ë¯¸ë¦¬ ìƒì„±
+	PktLogInRes resPkt;
 
-	if (addRet != ERROR_CODE::NONE) {
+	// 3. ID/PW ì¸ì¦ (DB ì—°ë™)
+	std::string userNickname; // DBì—ì„œ ì¡°íšŒëœ ìœ ì € ë‹‰ë„¤ì„
+	auto authRet = AuthenticateUser(reqPkt->szID, reqPkt->szPW, userNickname);
+
+	if (authRet != ERROR_CODE::NONE)
+	{
+		// ì¸ì¦ ì‹¤íŒ¨ (ID ì—†ìŒ, PW í‹€ë¦¼ ë“±)
+		m_pRefLogger->Write(LOG_TYPE::L_ERROR, "%s | Login. sessionIndex(%d), ID(%s) | ì¸ì¦ ì‹¤íŒ¨: %d",
+			__FUNCTION__, packetInfo.SessionIndex, reqPkt->szID, (int)authRet);
+
+		resPkt.SetError(authRet);
+		m_pRefNetwork->SendData(packetInfo.SessionIndex, (short)PACKET_ID::LOGIN_RES, sizeof(resPkt), (char*)&resPkt);
+		return authRet;
+	}
+
+	// 4. ì¸ì¦ ì„±ê³µ í›„, í˜„ì¬ ì ‘ì† ì¤‘ì¸ ìœ ì €ì¸ì§€ í™•ì¸ ë° ì¶”ê°€
+	auto addRet = m_pRefUserMgr->AddUser(packetInfo.SessionIndex, (const uint8_t*)reqPkt->szID);
+	if (addRet != ERROR_CODE::NONE)
+	{
+		// ìœ ì € ì¶”ê°€ ì‹¤íŒ¨ (ì´ë¯¸ ì ‘ì† ì¤‘ì¸ ID ë“±)
+		m_pRefLogger->Write(LOG_TYPE::L_ERROR, "%s | Login. sessionIndex(%d), ID(%s) | ìœ ì € ì¶”ê°€ ì‹¤íŒ¨: %d",
+			__FUNCTION__, packetInfo.SessionIndex, reqPkt->szID, (int)addRet);
+
 		resPkt.SetError(addRet);
-		m_pRefNetwork->SendData(packetInfo.SessionIndex, (short)PACKET_ID::LOGIN_REQ, sizeof(PktLogInRes), (char*)&resPkt);
+		m_pRefNetwork->SendData(packetInfo.SessionIndex, (short)PACKET_ID::LOGIN_RES, sizeof(resPkt), (char*)&resPkt);
 		return addRet;
 	}
 
-	resPkt.ErrorCode = (short)addRet;
-	m_pRefNetwork->SendData(packetInfo.SessionIndex, (short)PACKET_ID::LOGIN_RES, sizeof(PktLogInRes), (char*)&resPkt);
+	// 5. ìµœì¢… ì„±ê³µ ì‘ë‹µ íŒ¨í‚· êµ¬ì„± ë° ì „ì†¡
+	resPkt.SetError(ERROR_CODE::NONE);
+
+	// ë‹‰ë„¤ì„ ì •ë³´ ì±„ìš°ê¸°
+	const int32_t nickLen = userNickname.length();
+	const int32_t copyLen = std::min(nickLen, MAX_USER_NICKNAME_SIZE);
+	resPkt.NickLen = static_cast<uint16_t>(copyLen);
+	memcpy(resPkt.Nick, userNickname.c_str(), copyLen);
+
+	m_pRefNetwork->SendData(packetInfo.SessionIndex, (short)PACKET_ID::LOGIN_RES, sizeof(resPkt), (char*)&resPkt);
+
+	m_pRefLogger->Write(LOG_TYPE::L_INFO, "%s | Login. sessionIndex(%d), ID(%s) | ë¡œê·¸ì¸ ì„±ê³µ",
+		__FUNCTION__, packetInfo.SessionIndex, reqPkt->szID);
+
+	return ERROR_CODE::NONE;
+}
+
+ERROR_CODE PacketProcess::AuthenticateUser(const uint8_t* id, const uint8_t* pw, std::string& outNickname)
+{
+	std::string id_str((const char*)id);
+	std::string pw_str((const char*)pw);
+
+	if (!m_pRefDBMgr->VerifyLogin(id_str, pw_str))
+	{
+		// IDê°€ ì—†ê±°ë‚˜ PWê°€ í‹€ë¦° ê²½ìš°
+		return ERROR_CODE::REGISTER_INVALID_ID;
+	}
+
+	if (!m_pRefDBMgr->GetUserNickname(id_str, outNickname))
+	{
+		// ìœ ì €ëŠ” ìˆìœ¼ë‚˜ ë‹‰ë„¤ì„ ì¡°íšŒ ì‹¤íŒ¨ (DB ì—ëŸ¬)
+		return ERROR_CODE::DB_ERROR;
+	}
+
+	// ì¸ì¦ ì„±ê³µ
+	return ERROR_CODE::NONE;
+}
+
+ERROR_CODE PacketProcess::FireStart(PacketInfo packetInfo) {
+
+	auto reqPkt = (PktFireStartReq*)packetInfo.pRefData;
+	m_pRefGameMgr->OnFireRequest(packetInfo.SessionIndex, reqPkt);
+
+	return ERROR_CODE::NONE;
+}
+ERROR_CODE PacketProcess::MatchCancel(PacketInfo packetInfo)
+{
+	return ERROR_CODE::NONE;
+}
+
+ERROR_CODE PacketProcess::Register(PacketInfo packetInfo)
+{
+	// 1. ìš”ì²­ íŒ¨í‚· íŒŒì‹±
+	auto reqPkt = (PktRegisterReq*)packetInfo.pRefData;
+	m_pRefLogger->Write(LOG_TYPE::L_INFO, "%s | Register. sessionIndex(%d), ID(%s) | íšŒì›ê°€ì… ìš”ì²­ ìˆ˜ì‹ ",
+		__FUNCTION__, packetInfo.SessionIndex, reqPkt->szID);
+
+	// 2. ì‘ë‹µ íŒ¨í‚· ë¯¸ë¦¬ ìƒì„± (PktRegisterResê°€ ìˆë‹¤ê³  ê°€ì •)
+	PktRegisterRes resPkt;
+
+	// 3. DBì— ë“±ë¡ ì‹œë„ (ID/ë‹‰ë„¤ì„ ì¤‘ë³µ í™•ì¸ ë“±)
+	std::string id_str((const char*)reqPkt->szID);
+	std::string pw_str((const char*)reqPkt->szPW);
+	std::string nick_str((const char*)reqPkt->Nick, reqPkt->NickLen);
+
+	if (m_pRefDBMgr->IsUserIDExist(id_str))
+	{
+		resPkt.SetError(ERROR_CODE::REGISTER_INVALID_ID);
+	}
+	else if (m_pRefDBMgr->IsNicknameExist(nick_str))
+	{
+		resPkt.SetError(ERROR_CODE::REGISTER_INVALID_NICKNAME);
+	}
+	else if (!m_pRefDBMgr->InsertUser(id_str, pw_str, nick_str)) // TODO: PWëŠ” í•´ì‹œí•˜ì—¬ ì €ì¥í•´ì•¼ í•¨
+		//InsertUser ë‚´ë¶€ì—ì„œ PWì— ë§ê²Œ í•´ì‹œí•˜ì—¬ ì €ì¥?
+	{
+		resPkt.SetError(ERROR_CODE::DB_ERROR);
+	}
+	else
+	{
+		resPkt.SetError(ERROR_CODE::NONE);
+	}
+
+	// 4. ê²°ê³¼ì— ë”°ë¥¸ ì‘ë‹µ ì „ì†¡
+	auto regRet = (ERROR_CODE)resPkt.ErrorCode;
+	if (regRet != ERROR_CODE::NONE)
+	{
+		m_pRefLogger->Write(LOG_TYPE::L_ERROR, "%s | Register. sessionIndex(%d), ID(%s) | ë“±ë¡ ì‹¤íŒ¨: %d",
+			__FUNCTION__, packetInfo.SessionIndex, reqPkt->szID, (int)regRet);
+	}
+	else
+	{
+		m_pRefLogger->Write(LOG_TYPE::L_INFO, "%s | Register. sessionIndex(%d), ID(%s) | íšŒì›ê°€ì… ì„±ê³µ",
+			__FUNCTION__, packetInfo.SessionIndex, reqPkt->szID);
+	}
+
+	m_pRefNetwork->SendData(packetInfo.SessionIndex, (short)PACKET_ID::REGISTER_RES, sizeof(resPkt), (char*)&resPkt);
+	return regRet;
+}
+
+ERROR_CODE PacketProcess::EchoChat(PacketInfo p)
+{
+	const auto* req = reinterpret_cast<const PktEchoChatReq*>(p.pRefData);
+
+	uint16_t len = req->Len;
+	if (len > MAX_CHAT_LEN - 1) len = MAX_CHAT_LEN - 1;
+
+	// ë¡œê·¸: ì½˜ì†”ì—ëŠ” ì•ë¶€ë¶„ë§Œ, íŒŒì¼ì—ëŠ” ì „ì²´
+	LogUtils::PreviewAndDump(m_pRefLogger, p.SessionIndex, p.PacketId,
+		len, reinterpret_cast<const char*>(req->Msg));
+
+	// íšŒì‹  (ë„ ë³´ì¥)
+	PktEchoChatNty nty{};
+	nty.Len = len;
+	std::memcpy(nty.Msg, req->Msg, len);
+	nty.Msg[len] = '\0';
+
+	m_pRefNetwork->SendData(p.SessionIndex,
+		static_cast<short>(PACKET_ID::ECHO_CHAT_NTY),
+		sizeof(PktEchoChatNty),
+		reinterpret_cast<const char*>(&nty));
 
 	return ERROR_CODE::NONE;
 }

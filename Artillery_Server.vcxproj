@@ -70,6 +70,9 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);C:\MySQL\mysql-connector-c++-8.0.33-winx64\include</IncludePath>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -103,10 +106,15 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>C:\Program Files\MySQL\MySQL Connector C++ 8.0\include; C:\GitHubs\Artillery_Protocol</AdditionalIncludeDirectories>
+      <ShowIncludes>false</ShowIncludes>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>C:\Program Files\MySQL\MySQL Connector C++ 8.0\lib64</AdditionalLibraryDirectories>
+      <AdditionalDependencies>mysqlcppconn8.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -124,6 +132,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="BotManager.cpp" />
+    <ClCompile Include="DBManager.cpp" />
+    <ClCompile Include="GameManager.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="NetLib\TcpNetwork.cpp" />
     <ClCompile Include="PacketProcess.cpp" />
@@ -133,16 +144,18 @@
     <ClCompile Include="UserManager.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BotManager.h" />
+    <ClInclude Include="Common.h" />
     <ClInclude Include="conmanip.h" />
     <ClInclude Include="ConsoleLogger.h" />
-    <ClInclude Include="ErrorCode.h" />
+    <ClInclude Include="DBManager.h" />
+    <ClInclude Include="GameManager.h" />
+    <ClInclude Include="LogUtils.h" />
     <ClInclude Include="NetLib\Define.h" />
     <ClInclude Include="NetLib\ILog.h" />
     <ClInclude Include="NetLib\ITcpNetwork.h" />
     <ClInclude Include="NetLib\ServerNetErrorCode.h" />
     <ClInclude Include="NetLib\TcpNetwork.h" />
-    <ClInclude Include="Packet.h" />
-    <ClInclude Include="PacketID.h" />
     <ClInclude Include="PacketProcess.h" />
     <ClInclude Include="Room.h" />
     <ClInclude Include="RoomManager.h" />

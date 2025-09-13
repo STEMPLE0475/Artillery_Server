@@ -1,7 +1,10 @@
-#pragma once
+﻿#pragma once
 
 #include <vector>
 #include <unordered_map>
+#include "User.h"
+#include "Room.h"
+#include "UserManager.h"
 
 
 namespace NServerNetLib
@@ -38,7 +41,15 @@ public:
 
 	Room* GetRoom(const short roomIndex);
 
+	Room* FindEmptyRoom();
+
+	Room* CreateRoom();
+
+	Room* FindOrCreateRoom();
+
 	auto MaxRoomCount() { return (short)m_RoomList.size(); }
+
+	bool CheckMatch(const short roomIndex);
 
 
 protected:

@@ -1,8 +1,9 @@
-#pragma once
+﻿#pragma once
 #include <memory>
 
-#include "Packet.h"
-#include "ErrorCode.h"
+#include "ProtocolCommon.h"
+#include <windows.h>
+#include <locale.h>
 
 
 namespace NServerNetLib
@@ -16,6 +17,9 @@ namespace NServerNetLib
 class UserManager;
 class RoomManager;
 class PacketProcess;
+class DBManager;
+class GameManager;
+class BotManager;
 
 class Server
 {
@@ -28,12 +32,13 @@ public:
 	void Run();
 
 	void Stop();
-
+	void CreateBots(const int botCount);
 
 private:
 	ERROR_CODE LoadConfig();
 
 	void Release();
+	
 
 
 private:
@@ -47,8 +52,10 @@ private:
 	std::unique_ptr<PacketProcess> m_pPacketProc;
 
 	std::unique_ptr<UserManager> m_pUserMgr;
-
 	std::unique_ptr<RoomManager> m_pRoomMgr;
+	std::unique_ptr<DBManager> m_pDBMgr;
+	std::unique_ptr<GameManager> m_pGameMgr;
+	std::unique_ptr<BotManager> m_pBotMgr;
 
 };
 

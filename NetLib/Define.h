@@ -1,6 +1,6 @@
-#pragma once
+ï»¿#pragma once
 
-//Define.h ¿¡¼­´Â ¼­¹ö ³×Æ®¿öÅ©¿¡¼­ »ç¿ëµÇ´Â ±¸Á¶Ã¼¸¦ Á¤ÀÇÇÑ´Ù. (Å¬¶óÀÌ¾ğÆ®, ¼­¹ö Á¤º¸, ÆĞÅ¶ µî)
+//Define.h ì—ì„œëŠ” ì„œë²„ ë„¤íŠ¸ì›Œí¬ì—ì„œ ì‚¬ìš©ë˜ëŠ” êµ¬ì¡°ì²´ë¥¼ ì •ì˜í•œë‹¤. (í´ë¼ì´ì–¸íŠ¸, ì„œë²„ ì •ë³´, íŒ¨í‚· ë“±)
 
 namespace NServerNetLib
 {
@@ -10,7 +10,7 @@ namespace NServerNetLib
 		int BackLogCount;
 
 		int MaxClientCount;
-		int ExtraClientCount; // °¡´ÉÇÏ¸é ·Î±×ÀÎ¿¡¼­ Â¥¸£µµ·Ï MaxClientCount + ¿©À¯ºĞÀ» ÁØºñÇÑ´Ù.
+		int ExtraClientCount; // ê°€ëŠ¥í•˜ë©´ ë¡œê·¸ì¸ì—ì„œ ì§œë¥´ë„ë¡ MaxClientCount + ì—¬ìœ ë¶„ì„ ì¤€ë¹„í•œë‹¤.
 
 		short MaxClientSockOptRecvBufferSize;
 		short MaxClientSockOptSendBufferSize;
@@ -21,10 +21,10 @@ namespace NServerNetLib
 		int MaxRoomUserCount;
 	};
 
-	const int MAX_IP_LEN = 32; // IP ¹®ÀÚ¿­ ÃÖ´ë ±æÀÌ
-	const int MAX_PACKET_BODY_SIZE = 1024; // ÃÖ´ë ÆĞÅ¶ º¸µğ Å©±â
+	const int MAX_IP_LEN = 32; // IP ë¬¸ìì—´ ìµœëŒ€ ê¸¸ì´
+	const int MAX_PACKET_BODY_SIZE = 1024; // ìµœëŒ€ íŒ¨í‚· ë³´ë”” í¬ê¸°
 
-	struct ClientSession // Client ¹è¿­¿¡ ´ã°Ü ÀÖ´Â ClinetÀÇ ±¸Á¶Ã¼
+	struct ClientSession // Client ë°°ì—´ì— ë‹´ê²¨ ìˆëŠ” Clinetì˜ êµ¬ì¡°ì²´
 	{
 		bool IsConnected() { return SocketFD != 0 ? true : false; }
 
@@ -43,7 +43,7 @@ namespace NServerNetLib
 		unsigned long long	SocketFD = 0;
 		char    IP[MAX_IP_LEN] = { 0, };
 
-		char* pRecvBuffer = nullptr; //¼ö½Å ¹öÆÛ¸¦ ³ÎÆ÷ÀÎÅÍ »óÅÂ·Î ¸¶µç´Ù. ÀÌÈÄ InitiateÇÒ ¶§, new char[]·Î ÇÒ´çÇØÁØ´Ù.
+		char* pRecvBuffer = nullptr; //ìˆ˜ì‹  ë²„í¼ë¥¼ ë„í¬ì¸í„° ìƒíƒœë¡œ ë§ˆë“ ë‹¤. ì´í›„ Initiateí•  ë•Œ, new char[]ë¡œ í• ë‹¹í•´ì¤€ë‹¤.
 		int     RemainingDataSize = 0;
 		int     PrevReadPosInRecvBuffer = 0;
 

@@ -1,8 +1,8 @@
-#pragma once
+ï»¿#pragma once
 
 namespace NServerNetLib
 {
-	// ¿¡·¯ ÄÚµå´Â 1 ~ 200±îÁö »ç¿ëÇÑ´Ù.
+	// ì—ëŸ¬ ì½”ë“œëŠ” 1 ~ 200ê¹Œì§€ ì‚¬ìš©í•œë‹¤.
 	enum class NET_ERROR_CODE : short
 	{
 		NONE = 0,

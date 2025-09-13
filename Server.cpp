@@ -1,5 +1,6 @@
-#include <thread>
+ï»¿#include <thread>
 #include <chrono>
+
 
 #include "NetLib/ServerNetErrorCode.h"
 #include "NetLib/Define.h"
@@ -8,13 +9,20 @@
 #include "RoomManager.h"
 #include "PacketProcess.h"
 #include "UserManager.h"
+#include "DBManager.h"
+#include "GameManager.h"
+#include "BotManager.h"
 #include "Server.h"
+
+
 
 using NET_ERROR_CODE = NServerNetLib::NET_ERROR_CODE;
 using LOG_TYPE = NServerNetLib::LOG_TYPE;
 
 Server::Server()
 {
+	setlocale(LC_ALL, "");
+	SetConsoleOutputCP(CP_UTF8); // ì½˜ì†” ì¸ì½”ë”©
 }
 
 Server::~Server()
@@ -31,30 +39,50 @@ ERROR_CODE Server::Init()
 	m_pNetwork = std::make_unique<NServerNetLib::TcpNetwork>();
 	auto result = m_pNetwork->Init(m_pServerConfig.get(), m_pLogger.get());
 
+
 	if (result != NET_ERROR_CODE::NONE)
 	{
-		m_pLogger->Write(LOG_TYPE::L_ERROR, "%s | Init Fail. NetErrorCode(%s)", __FUNCTION__, (short)result);
+
+		m_pLogger->Write(LOG_TYPE::L_ERROR, "%s | Init Fail. NetErrorCode(%hd)", __FUNCTION__, (short)result);
 		return ERROR_CODE::MAIN_INIT_NETWORK_INIT_FAIL;
 	}
+	
+
+	//DBManager init
+	m_pDBMgr = std::make_unique<DBManager>();
+	m_pDBMgr->Init("127.0.0.1", "stemule0", "597408", "gamedb");
 
 	//UserManager Init
 	m_pUserMgr = std::make_unique<UserManager>();
-	m_pUserMgr->Init(m_pServerConfig->MaxClientCount);
+	m_pUserMgr->Init(m_pServerConfig->MaxClientCount, m_pDBMgr.get());
 
 	//RoomManager Init
 	m_pRoomMgr = std::make_unique<RoomManager>();
 	m_pRoomMgr->Init(m_pServerConfig->MaxRoomCount, m_pServerConfig->MaxRoomUserCount);
 	m_pRoomMgr->SetNetwork(m_pNetwork.get(), m_pLogger.get());
 
+	//GameManager Init
+	m_pGameMgr = std::make_unique<GameManager>();
+	m_pGameMgr->Init(m_pUserMgr.get(), m_pRoomMgr.get(), m_pNetwork.get(), m_pLogger.get(), m_pDBMgr.get());
+
+	//BotManager Init
+	m_pBotMgr = std::make_unique<BotManager>();
+	m_pBotMgr->Init(m_pGameMgr.get(), m_pLogger.get());
+
 	//PacketProcess Init
 	m_pPacketProc = std::make_unique<PacketProcess>();
-	m_pPacketProc->Init(m_pNetwork.get(), m_pUserMgr.get(), m_pRoomMgr.get(), m_pServerConfig.get(), m_pLogger.get());
-	//ÆĞÅ¶ ÇÁ·Î¼¼½º¶û pNetwork¸¦ ¿Ö ºĞ¸®ÇÏ¿´À»±î?
+	m_pPacketProc->Init(m_pNetwork.get(), m_pUserMgr.get(), m_pRoomMgr.get(), m_pServerConfig.get(), m_pLogger.get(), m_pDBMgr.get(), m_pGameMgr.get());
 
-	//´Ù µÇ¸é ½ÇÇà
+
+	//ë‹¤ ë˜ë©´ ì‹¤í–‰
 	m_IsRun = true;
 
 	m_pLogger->Write(LOG_TYPE::L_INFO, "%s | Init Success. Server Run", __FUNCTION__);
+
+	LogUtils::DumpPath() = "C:\\temp\\echo_dump.bin";  
+	LogUtils::PreviewBytes() = 128;
+
+
 	return ERROR_CODE::NONE;
 }
 
@@ -65,6 +93,24 @@ void Server::Release()
 	}
 }
 
+void Server::CreateBots(const int botCount)
+{
+	for (int i = 0; i < botCount; ++i)
+	{
+		auto [err, pBot] = m_pUserMgr->AddNewBot();
+		if (err == ERROR_CODE::NONE && pBot != nullptr)
+		{
+			m_pBotMgr->AddBot(pBot);
+		}
+		else
+		{
+			m_pLogger->Write(LOG_TYPE::L_WARN, "Failed to create bot. Maybe server is full.");
+			break;
+		}
+	}
+	m_pLogger->Write(LOG_TYPE::L_INFO, "[DEBUG] Requested to create %d bots.", botCount);
+}
+
 void Server::Stop()
 {
 	m_IsRun = false;
@@ -72,32 +118,50 @@ void Server::Stop()
 
 void Server::Run()
 {
-	while (m_IsRun) // ¼­¹ö ÀÛµ¿ Áß
-	{
-		m_pNetwork->Run(); // select() ÇÔ¼ö¸¦ È£Ãâ. Áï, ³×Æ®¿öÅ© ÀÌº¥Æ®¸¦ °¨ÁöÇÑ´Ù.
+	auto lastTickTime = std::chrono::steady_clock::now(); // deltaTime ê³„ì‚°ì„ ìœ„í•œ ë§ˆì§€ë§‰ Tick ì‹œê°„ ì €ì¥
 
-		//??¿Ö Run°ú ÆĞÅ¶À» µû·Î ÀÛµ¿ÇÏ°Ô ÇÏ¿´À»±î?
+	while (m_IsRun)
+	{
+		// deltaTime ê³„ì‚°
+		auto currentTicktime = std::chrono::steady_clock::now();
+		auto duration = currentTicktime - lastTickTime;
+		lastTickTime = currentTicktime;
+
+		// durationì„ float íƒ€ì…ì˜ ì´ˆ ë‹¨ìœ„ë¡œ ë³€í™˜
+		float deltaTime = std::chrono::duration_cast<std::chrono::microseconds>(duration).count() / 1000000.0f;
+
+		// select() í˜¸ì¶œ
+		m_pNetwork->Run();
+
+		// ìˆ˜ì§‘ëœ íŒ¨í‚· ì²˜ë¦¬
 		while (true)
 		{
-			auto packetInfo = m_pNetwork->GetPacketInfo(); // ÆĞÅ¶À» ¹Ş¾Æ¿Â´Ù.
-			//SessionIndex, PacketId, PacketBodySize, pRefData
+			auto packetInfo = m_pNetwork->DispatchPacket(); // íŒ¨í‚·ì„ ë°›ì•„ì˜¨ë‹¤.
 
-			if (packetInfo.PacketId == 0) // packetInfo(³×Æ®¿öÅ© ÀÌº¥Æ®)°¡ ¾øÀ¸¸é break;
+			if (packetInfo.PacketId == 0) // packetInfo(ë„¤íŠ¸ì›Œí¬ ì´ë²¤íŠ¸)ê°€ ì—†ìœ¼ë©´ break;
 			{
 				break;
 			}
 			else
 			{
-				m_pPacketProc->Process(packetInfo); // ÆĞÅ¶ÀÌ ÀÖÀ¸¸é Ã³¸®
+				m_pPacketProc->Process(packetInfo); // íŒ¨í‚·ì´ ìˆìœ¼ë©´ ì²˜ë¦¬
 
 			}
 		}
+
+		// Tick í˜¸ì¶œ -> ê²Œì„ ìƒíƒœ ì—…ë°ì´íŠ¸
+		m_pGameMgr->Tick(deltaTime);
+		m_pBotMgr->Tick(deltaTime);
+
+		
+		// 1ì´ˆì— 60ë²ˆ ë£¨í”„ ëŒë„ë¡ ì œí•œ
+		std::this_thread::sleep_for(std::chrono::milliseconds(16));
 	}
 }
 
 ERROR_CODE Server::LoadConfig()
 {
-	//¼­¹ö¸¦ Á¦´ë·Î ¸¸µå·Á¸é ÇÏµå ÄÚµù ÇÏÁö ¸»°í, ¼³Á¤ Á¤º¸ ÆÄÀÏ (JSON µî)À¸·Î ¸¸µå´Â °ÍÀÌ ÁÁÀ½.
+	//ì„œë²„ë¥¼ ì œëŒ€ë¡œ ë§Œë“œë ¤ë©´ í•˜ë“œ ì½”ë”© í•˜ì§€ ë§ê³ , ì„¤ì • ì •ë³´ íŒŒì¼ (JSON ë“±)ìœ¼ë¡œ ë§Œë“œëŠ” ê²ƒì´ ì¢‹ìŒ.
 	m_pServerConfig = std::make_unique<NServerNetLib::ServerConfig>();
 
 	m_pServerConfig->Port = 11021;
@@ -109,7 +173,7 @@ ERROR_CODE Server::LoadConfig()
 	m_pServerConfig->MaxClientRecvBufferSize = 8192;
 	m_pServerConfig->MaxClientSendBufferSize = 8192;
 
-	m_pServerConfig->ExtraClientCount = 64; // ¹Ù·Î Â¥¸£Áö ¸»°í ¿Ö Â©¸®´ÂÁö´Â ¾Ë·ÁÁÖ±â À§ÇÑ ¿©À¯
+	m_pServerConfig->ExtraClientCount = 64; // ë°”ë¡œ ì§œë¥´ì§€ ë§ê³  ì™œ ì§¤ë¦¬ëŠ”ì§€ëŠ” ì•Œë ¤ì£¼ê¸° ìœ„í•œ ì—¬ìœ 
 	m_pServerConfig->MaxRoomCount = 20;
 	m_pServerConfig->MaxRoomUserCount = 4;
 

@@ -1,7 +1,9 @@
 ﻿#include <iostream>
 #include <thread>
+#include <conio.h> // _kbhit, _getch
 
 #include "Server.h"
+
 
 int main()
 {
@@ -13,11 +15,23 @@ int main()
 		server.Run(); } // 서버가 종료될 때까지 계속해서 스레드에서 실행됨.
 	);
 
+	std::cout << "Server Running... (b: Create 4 Bots, q: Quit)" << std::endl;
 
+	while (true)
+	{
+		char input = _getch(); // 엔터 없이 바로 키 입력 받기
 
-	std::cout << "press any key to exit...";
-	getchar(); // char을 입력을 받으면 서버 종료되도록 한다. 간단하게 구현할 수 있는 로직.
-
+		if (input == 'b')
+		{
+			// 'b'를 누르면 Server 객체의 CreateBots 함수를 호출합니다.
+			server.CreateBots(4);
+		}
+		else if (input == 'q')
+		{
+			// 'q'를 누르면 서버를 종료합니다.
+			break; // while 루프 탈출
+		}
+	}
 	server.Stop();
 	runThread.join();
 

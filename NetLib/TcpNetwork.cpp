@@ -1,4 +1,4 @@
-#include <cstring>
+ï»¿#include <cstring>
 #include <vector>
 #include <deque>
 
@@ -15,9 +15,9 @@ namespace NServerNetLib
 
 	TcpNetwork::~TcpNetwork()
 	{
-		for (auto& client : m_ClientSessionPool) // Å¬¶óÀÌ¾ğÆ® ¹è¿­
+		for (auto& client : m_ClientSessionPool) // í´ë¼ì´ì–¸íŠ¸ ë°°ì—´
 		{
-			if (client.pRecvBuffer) { // client¾È¿¡ ¼ö½Å ¹öÆÛ¶û ¼Û½Å ¹öÆÛ¸¦ ³ª´©¾î¼­ °ü¸®ÇÑ´Ù?
+			if (client.pRecvBuffer) { // clientì•ˆì— ìˆ˜ì‹  ë²„í¼ë‘ ì†¡ì‹  ë²„í¼ë¥¼ ë‚˜ëˆ„ì–´ì„œ ê´€ë¦¬í•œë‹¤?
 				delete[] client.pRecvBuffer;
 			}
 
@@ -27,30 +27,30 @@ namespace NServerNetLib
 		}
 	}
 
-	NET_ERROR_CODE TcpNetwork::Init(const ServerConfig* pConfig, ILog* pLogger) // ¼­¹ö ½ÇÇà
+	NET_ERROR_CODE TcpNetwork::Init(const ServerConfig* pConfig, ILog* pLogger) // ì„œë²„ ì‹¤í–‰
 	{
 		std::memcpy(&m_Config, pConfig, sizeof(ServerConfig));
-		//mÀº ¸â¹ö¸¦ Ç¥½Ã. p´Â Æ÷ÀÎÅÍ
+		//mì€ ë©¤ë²„ë¥¼ í‘œì‹œ. pëŠ” í¬ì¸í„°
 
 		m_pRefLogger = pLogger;
 
-		auto initRet = InitServerSocket(); // ¼­¹ö ¼ÒÄÏ »ı¼º
-		//Ret º¯¼ö·ÎÀ¸·Î ¿À·ù °¨ÁöÇÏ´Â µí
+		auto initRet = InitServerSocket(); // ì„œë²„ ì†Œì¼“ ìƒì„±
+		//Ret ë³€ìˆ˜ë¡œìœ¼ë¡œ ì˜¤ë¥˜ ê°ì§€í•˜ëŠ” ë“¯
 		if (initRet != NET_ERROR_CODE::NONE)
 		{
 			return initRet;
 		}
 
-		auto bindListenRet = BindListen(pConfig->Port, pConfig->BackLogCount); // ¼­¹ö ¹ÙÀÎµå¿Í ¸®½¼
+		auto bindListenRet = BindListen(pConfig->Port, pConfig->BackLogCount); // ì„œë²„ ë°”ì¸ë“œì™€ ë¦¬ìŠ¨
 		if (bindListenRet != NET_ERROR_CODE::NONE)
 		{
 			return bindListenRet;
 		}
 
-		FD_ZERO(&m_Readfds); // °¨½ÃÇÒ ¼ÒÄÏ ¸ñ·Ï(m_Readfds)À» ÃÊ±âÈ­ FD_ZERO
-		FD_SET(m_ServerSockfd, &m_Readfds); // °¨½ÃÇÒ ¼ÒÄÏ ¸ñ·Ï(m_Readfds)¿¡ m_ServerSockfd ¼­¹ö ¼ÒÄÏÀ» Ãß°¡ FD_SET
+		FD_ZERO(&m_Readfds); // ê°ì‹œí•  ì†Œì¼“ ëª©ë¡(m_Readfds)ì„ ì´ˆê¸°í™” FD_ZERO
+		FD_SET(m_ServerSockfd, &m_Readfds); // ê°ì‹œí•  ì†Œì¼“ ëª©ë¡(m_Readfds)ì— m_ServerSockfd ì„œë²„ ì†Œì¼“ì„ ì¶”ê°€ FD_SET
 		auto sessionPoolSize = CreateSessionPool(pConfig->MaxClientCount + pConfig->ExtraClientCount);
-		//Å¬¶óÀÌ¾ğÆ® ¼¼¼Ç Ç®À» ¹Ì¸® »ı¼ºÇÔ.
+		//í´ë¼ì´ì–¸íŠ¸ ì„¸ì…˜ í’€ì„ ë¯¸ë¦¬ ìƒì„±í•¨.
 
 		m_pRefLogger->Write(LOG_TYPE::L_INFO, "%s | Session Pool Size: %d", __FUNCTION__, sessionPoolSize);
 
@@ -62,20 +62,20 @@ namespace NServerNetLib
 		WSACleanup();
 	}
 
-	RecvPacketInfo TcpNetwork::GetPacketInfo() // °¡Àå ¾Õ¿¡ ÀÖ´Â ÆĞÅ¶À» ¹İÈ¯ÇÑ´Ù.
+	RecvPacketInfo TcpNetwork::DispatchPacket() // ê°€ì¥ ì•ì— ìˆëŠ” íŒ¨í‚·ì„ ë°˜í™˜í•œë‹¤.
 	{
 		RecvPacketInfo packetInfo;
 
-		if (m_PacketQueue.empty() == false) // m_PacketQueue¿¡ ¹ŞÀº ÆĞÅ¶ÀÌ ÀÖ´ÂÁö È®ÀÎ
+		if (m_PacketQueue.empty() == false) // m_PacketQueueì— ë°›ì€ íŒ¨í‚·ì´ ìˆëŠ”ì§€ í™•ì¸
 		{
-			packetInfo = m_PacketQueue.front(); // m_PacketQueue¿¡ ¸Ç ¾Õ¿¡ °Í. ( °¡Àå ¸ÕÀú µé¾î¿Â ÆĞÅ¶ È®ÀÎ )
-			m_PacketQueue.pop_front(); // ²¨³»°í
+			packetInfo = m_PacketQueue.front(); // m_PacketQueueì— ë§¨ ì•ì— ê²ƒ. ( ê°€ì¥ ë¨¼ì € ë“¤ì–´ì˜¨ íŒ¨í‚· í™•ì¸ )
+			m_PacketQueue.pop_front(); // êº¼ë‚´ê³ 
 		}
 
-		return packetInfo; // ¹İÈ¯
+		return packetInfo; // ë°˜í™˜
 	}
 
-	void TcpNetwork::ForcingClose(const int sessionIndex) // Å¬¶ó °­Á¦ Á¾·á
+	void TcpNetwork::ForcingClose(const int sessionIndex) // í´ë¼ ê°•ì œ ì¢…ë£Œ
 	{
 		if (m_ClientSessionPool[sessionIndex].IsConnected() == false) {
 			return;
@@ -84,28 +84,28 @@ namespace NServerNetLib
 		CloseSession(SOCKET_CLOSE_CASE::FORCING_CLOSE, m_ClientSessionPool[sessionIndex].SocketFD, sessionIndex);
 	}
 
-	void TcpNetwork::Run() // update ÀÛµ¿ Áß ·ÎÁ÷.
+	void TcpNetwork::Run() // update ì‘ë™ ì¤‘ ë¡œì§.
 	{
-		auto read_set = m_Readfds; // ÇØ´ç ½º·¹µå¿¡¼­ ÇöÀç °ü¸®ÇÏ°í ÀÖ´Â ¸ğµç ¼ÒÄÏÀÇ Á¤º¸¸¦ °¡Áö°í ÀÖ´Ù.
-		//¿¬°áµÈ ¸ğµç ¼¼¼ÇÀ» write ÀÌº¥Æ®¸¦ Á¶»çÇÏ°í ÀÖ´Âµ¥ »ç½Ç ´Ù ÇÒ ÇÊ¿ä´Â ¾ø´Ù. ÀÌÀü¿¡ send ¹öÆÛ°¡ ´Ù Ã¡´ø ¼¼¼Ç¸¸ Á¶»çÇØµµ µÈ´Ù.
+		auto read_set = m_Readfds; // í•´ë‹¹ ìŠ¤ë ˆë“œì—ì„œ í˜„ì¬ ê´€ë¦¬í•˜ê³  ìˆëŠ” ëª¨ë“  ì†Œì¼“ì˜ ì •ë³´ë¥¼ ê°€ì§€ê³  ìˆë‹¤.
+		//ì—°ê²°ëœ ëª¨ë“  ì„¸ì…˜ì„ write ì´ë²¤íŠ¸ë¥¼ ì¡°ì‚¬í•˜ê³  ìˆëŠ”ë° ì‚¬ì‹¤ ë‹¤ í•  í•„ìš”ëŠ” ì—†ë‹¤. ì´ì „ì— send ë²„í¼ê°€ ë‹¤ ì°¼ë˜ ì„¸ì…˜ë§Œ ì¡°ì‚¬í•´ë„ ëœë‹¤.
 		auto write_set = m_Readfds;
 
-		timeval timeout{ 0, 1000 }; //tv_sec, tv_usec 0ÃÊ + 1000¸¶ÀÌÅ©·ÎÃÊ(1¹Ğ¸®ÃÊ) ¸¸Å­ ¹Ş´Â´Ù.
+		timeval timeout{ 0, 1000 }; //tv_sec, tv_usec 0ì´ˆ + 1000ë§ˆì´í¬ë¡œì´ˆ(1ë°€ë¦¬ì´ˆ) ë§Œí¼ ë°›ëŠ”ë‹¤.
 
-		auto selectResult = select(0, &read_set, &write_set, 0, &timeout); // select È£Ãâ. °¡Àå Áß¿äÇÑ ºÎºĞ. timeout½Ã°£. 1¹Ğ¸®ÃÊ µ¿¾È ÀÌº¥Æ® ¹ß»ı È®ÀÎ
-		//´Ù¸¸ Server.cpp¿¡¼­ RunÀº ¼­¹ö°¡ ¿­·ÁÀÖÀ¸¸é while(true)·Î ½ÇÇàµÇ´Âµ¥, ÀÌ·¯¸é ÁßÃ¸ÇØ¼­ ¹«ÇÑÈ÷ RunCheckSelectResult()¸¦ ½ÇÇàÇÏÁö ¾Ê´Â°¡?
-		// -> select ÇÔ¼ö´Â ºí·ÎÅ· ÇÔ¼öÀÓ. ÁöÁ¤ÇÑ ¹Ğ¸®ÃÊ¸¸Å­ ¼­¹ö ·çÇÁ¸¦ ´ë±âÇÔ.
+		auto selectResult = select(0, &read_set, &write_set, 0, &timeout); // select í˜¸ì¶œ. ê°€ì¥ ì¤‘ìš”í•œ ë¶€ë¶„. timeoutì‹œê°„. 1ë°€ë¦¬ì´ˆ ë™ì•ˆ ì´ë²¤íŠ¸ ë°œìƒ í™•ì¸
+		//ë‹¤ë§Œ Server.cppì—ì„œ Runì€ ì„œë²„ê°€ ì—´ë ¤ìˆìœ¼ë©´ while(true)ë¡œ ì‹¤í–‰ë˜ëŠ”ë°, ì´ëŸ¬ë©´ ì¤‘ì²©í•´ì„œ ë¬´í•œíˆ RunCheckSelectResult()ë¥¼ ì‹¤í–‰í•˜ì§€ ì•ŠëŠ”ê°€?
+		// -> select í•¨ìˆ˜ëŠ” ë¸”ë¡œí‚¹ í•¨ìˆ˜ì„. ì§€ì •í•œ ë°€ë¦¬ì´ˆë§Œí¼ ì„œë²„ ë£¨í”„ë¥¼ ëŒ€ê¸°í•¨.
 
-		auto isFDSetChanged = RunCheckSelectResult(selectResult); // select ÇÔ¼öÀÇ ¹İÈ¯À» ÀÌ¿ëÇÏ¿©. ÀÌº¥Æ® ¹ß»ı È®ÀÎ
+		auto isFDSetChanged = RunCheckSelectResult(selectResult); // select í•¨ìˆ˜ì˜ ë°˜í™˜ì„ ì´ìš©í•˜ì—¬. ì´ë²¤íŠ¸ ë°œìƒ í™•ì¸
 		if (isFDSetChanged == false)
 		{
-			return; // select·Î ÀÌº¥Æ® °¨ÁöÁß ¿À·ù°¡ ¹ß»ıÇÏ¸é Run() ·çÇÁ¸¦ Á¾·á. -> 1¹Ğ¸®ÃÊ ÀÌÈÄ¿¡ ´ÙÀ½ Run()½ÇÇàÇØ¼­ È®ÀÎ
+			return; // selectë¡œ ì´ë²¤íŠ¸ ê°ì§€ì¤‘ ì˜¤ë¥˜ê°€ ë°œìƒí•˜ë©´ Run() ë£¨í”„ë¥¼ ì¢…ë£Œ. -> 1ë°€ë¦¬ì´ˆ ì´í›„ì— ë‹¤ìŒ Run()ì‹¤í–‰í•´ì„œ í™•ì¸
 		}
 
 		// Accept
 		if (FD_ISSET(m_ServerSockfd, &read_set))
-			// read_set(ÀĞÀ» ÁØºñ°¡ µÈ ¼ÒÄÏµéÀÇ ¸ñ·Ï) ¾È¿¡ m_ServerSockfd(¼­¹ö ¼ÒÄÏ)ÀÌ Æ÷ÇÔµÇ¾î ÀÖ´Ù¸é.
-			// Å¬¶óÀÌ¾ğÆ®°¡ ¼­¹ö¿¡ Á¢¼ÓÀ» ½ÃµµÇÏ¸é, ¼­¹ö ¼ÒÄÏÀÇ read ¹öÆÛ¿¡ ÀÌº¥Æ®·Î ±â·ÏÀÌ µÈ´Ù. (¼­¹ö ¿¬°á ½Ãµµ°¡ ÀÖ¾ú´Ù)
+			// read_set(ì½ì„ ì¤€ë¹„ê°€ ëœ ì†Œì¼“ë“¤ì˜ ëª©ë¡) ì•ˆì— m_ServerSockfd(ì„œë²„ ì†Œì¼“)ì´ í¬í•¨ë˜ì–´ ìˆë‹¤ë©´.
+			// í´ë¼ì´ì–¸íŠ¸ê°€ ì„œë²„ì— ì ‘ì†ì„ ì‹œë„í•˜ë©´, ì„œë²„ ì†Œì¼“ì˜ read ë²„í¼ì— ì´ë²¤íŠ¸ë¡œ ê¸°ë¡ì´ ëœë‹¤. (ì„œë²„ ì—°ê²° ì‹œë„ê°€ ìˆì—ˆë‹¤)
 		{
 			NewSession();
 		}
@@ -115,20 +115,20 @@ namespace NServerNetLib
 
 	bool TcpNetwork::RunCheckSelectResult(const int result)
 	{
-		if (result == 0) // ¾Æ¹«·± ¼ÒÄÏ ÀÌº¥Æ®°¡ ¾ø¾úÀ½.
+		if (result == 0) // ì•„ë¬´ëŸ° ì†Œì¼“ ì´ë²¤íŠ¸ê°€ ì—†ì—ˆìŒ.
 		{
 			return false;
 		}
-		else if (result == -1) // ¿¡·¯ ¹ß»ı. -> ¸ØÃç¶ó
+		else if (result == -1) // ì—ëŸ¬ ë°œìƒ. -> ë©ˆì¶°ë¼
 		{
-			//linux¿¡¼­ signalÀ» ÇÚµå¸µÇÏÁö ¾Ê¾Ò´Âµ¥ ½Ã±×³¯ÀÌ ¹ß»ıÇÏ¸é select¿¡¼­ ¹Ş¾Æ¼­ °á°ú°¡ -1ÀÌ ³ª¿Â´Ù
+			//linuxì—ì„œ signalì„ í•¸ë“œë§í•˜ì§€ ì•Šì•˜ëŠ”ë° ì‹œê·¸ë‚ ì´ ë°œìƒí•˜ë©´ selectì—ì„œ ë°›ì•„ì„œ ê²°ê³¼ê°€ -1ì´ ë‚˜ì˜¨ë‹¤
 			return false;
 		}
 
-		return true; // result°¡ 0º¸´Ù Å©¸é ÀÌº¥Æ®°¡ ¹ß»ıÇß´Ù´Â °ÍÀÓ.
+		return true; // resultê°€ 0ë³´ë‹¤ í¬ë©´ ì´ë²¤íŠ¸ê°€ ë°œìƒí–ˆë‹¤ëŠ” ê²ƒì„.
 	}
 
-	//°¨ÁöµÈ read_setÀÌ³ª write_setÀÌ ¾î´À ¼¼¼ÇÀÇ ¼ÒÄÏÀÎÁö È®ÀÎÇÔ.
+	//ê°ì§€ëœ read_setì´ë‚˜ write_setì´ ì–´ëŠ ì„¸ì…˜ì˜ ì†Œì¼“ì¸ì§€ í™•ì¸í•¨.
 	void TcpNetwork::RunCheckSelectClients(fd_set& read_set, fd_set& write_set)
 	{
 		for (int i = 0; i < m_ClientSessionPool.size(); ++i)
@@ -179,6 +179,11 @@ namespace NServerNetLib
 
 	NET_ERROR_CODE TcpNetwork::SendData(const int sessionIndex, const short packetId, const short bodySize, const char* pMsg)
 	{
+		if (sessionIndex < 0)
+		{
+			return NET_ERROR_CODE::NONE; 
+		}
+
 		auto& session = m_ClientSessionPool[sessionIndex];
 
 		auto pos = session.SendSize;
@@ -203,50 +208,50 @@ namespace NServerNetLib
 
 	int TcpNetwork::CreateSessionPool(const int maxClientCount)
 	{
-		//¼­¹ö ½ÃÀÛ½Ã, ¹Ì¸® 50(ÃÖ´ë Á¢¼Ó Å¬¶óÀÌ¾ğÆ®)°³ÀÇ Å¬¶óÀÌ¾ğÆ®¼¼¼Ç Ç®À» ¸¸µé¾îµÒ.
-		//ÇÒ´çÀº µÇÁö ¾Ê¾ÒÀ¸³ª, ¹Ì¸® ¸¸µéµé¾îµÒ. -> Å¬¶óÀÌ¾ğÆ® Á¢¼Ó/ÇØÁ¦ ½Ã ¼¼¼ÇÀ» ºô·ÁÁÖ°í ¹İÈ¯
-		//Pooling ÃÖÀûÈ­ ±â¹ı »ç¿ë -> ÀÚÁÖ »ç¿ëÇÏ´Â ÀÚ¿øÀ» ¹Ì¸® ¸¸µé¾îµÎ°í Àç»ç¿ë
-		//1.  ¸Å¹ø new·Î »ı¼º/»èÁ¦ ÇÏ°í delete·Î ÇØÁ¦ÇÏ¸é, ºñ¿ëÀÌ Å©´Ù. -> ¸Ş¸ğ¸® ´ÜÆíÈ­ ¹ß»ı
-		//2. ÃÖ´ë µ¿Á¢ Á¦ÇÑ °ü¸®. ¸®¼Ò½º ÃÊ°ú¸¦ ¹æÁöÇÑ´Ù.
+		//ì„œë²„ ì‹œì‘ì‹œ, ë¯¸ë¦¬ 50(ìµœëŒ€ ì ‘ì† í´ë¼ì´ì–¸íŠ¸)ê°œì˜ í´ë¼ì´ì–¸íŠ¸ì„¸ì…˜ í’€ì„ ë§Œë“¤ì–´ë‘ .
+		//í• ë‹¹ì€ ë˜ì§€ ì•Šì•˜ìœ¼ë‚˜, ë¯¸ë¦¬ ë§Œë“¤ë“¤ì–´ë‘ . -> í´ë¼ì´ì–¸íŠ¸ ì ‘ì†/í•´ì œ ì‹œ ì„¸ì…˜ì„ ë¹Œë ¤ì£¼ê³  ë°˜í™˜
+		//Pooling ìµœì í™” ê¸°ë²• ì‚¬ìš© -> ìì£¼ ì‚¬ìš©í•˜ëŠ” ìì›ì„ ë¯¸ë¦¬ ë§Œë“¤ì–´ë‘ê³  ì¬ì‚¬ìš©
+		//1.  ë§¤ë²ˆ newë¡œ ìƒì„±/ì‚­ì œ í•˜ê³  deleteë¡œ í•´ì œí•˜ë©´, ë¹„ìš©ì´ í¬ë‹¤. -> ë©”ëª¨ë¦¬ ë‹¨í¸í™” ë°œìƒ
+		//2. ìµœëŒ€ ë™ì ‘ ì œí•œ ê´€ë¦¬. ë¦¬ì†ŒìŠ¤ ì´ˆê³¼ë¥¼ ë°©ì§€í•œë‹¤.
 		for (int i = 0; i < maxClientCount; ++i)
 		{
 			ClientSession session;
-			session.Clear(); // ClientSessionÀ» ÃÊ±â°ªÀ¸·Î ¼¼ÆÃ
-			session.Index = i; // ClientSession¿¡ ÀÎµ¦½º¸¦ ºÎ°úÇÑ´Ù? 
-			session.pRecvBuffer = new char[m_Config.MaxClientRecvBufferSize]; // nullptr »óÅÂÀÇ °ª¿¡´Ù°¡ ¹è¿­À» µ¿ÀûÀ¸·Î »ı¼ºÇØÁØ´Ù.
+			session.Clear(); // ClientSessionì„ ì´ˆê¸°ê°’ìœ¼ë¡œ ì„¸íŒ…
+			session.Index = i; // ClientSessionì— ì¸ë±ìŠ¤ë¥¼ ë¶€ê³¼í•œë‹¤? 
+			session.pRecvBuffer = new char[m_Config.MaxClientRecvBufferSize]; // nullptr ìƒíƒœì˜ ê°’ì—ë‹¤ê°€ ë°°ì—´ì„ ë™ì ìœ¼ë¡œ ìƒì„±í•´ì¤€ë‹¤.
 			session.pSendBuffer = new char[m_Config.MaxClientSendBufferSize];
 
-			m_ClientSessionPool.push_back(session); // Å¬¶óÀÌ¾ğÆ® ¼¼¼Ç Ç® ¹è¿­ vector
-			m_ClientSessionPoolIndex.push_back(session.Index);	// ºñ¾îÀÖ´Â Ç®À» µ¥Å¥·Î ÀúÀå. ÇÒ´ç ¿äÃ»ÀÌ ¿À¸é ¾ÕÀÌµç µÚ´Â »©¼­ ¾²¸é µÊ.
+			m_ClientSessionPool.push_back(session); // í´ë¼ì´ì–¸íŠ¸ ì„¸ì…˜ í’€ ë°°ì—´ vector
+			m_ClientSessionPoolIndex.push_back(session.Index);	// ë¹„ì–´ìˆëŠ” í’€ì„ ë°íë¡œ ì €ì¥. í• ë‹¹ ìš”ì²­ì´ ì˜¤ë©´ ì•ì´ë“  ë’¤ëŠ” ë¹¼ì„œ ì“°ë©´ ë¨.
 		}
 
 		return maxClientCount;
 	}
-	int TcpNetwork::AllocClientSessionIndex() // Å¬¶óÀÌ¾ğÆ® »õ¼ÇÀ» ÇÒ´çÇÑ´Ù. -> Ç®¿¡¼­ ÇÏ³ª °¡Á®°¨
+	int TcpNetwork::AllocClientSessionIndex() // í´ë¼ì´ì–¸íŠ¸ ìƒˆì…˜ì„ í• ë‹¹í•œë‹¤. -> í’€ì—ì„œ í•˜ë‚˜ ê°€ì ¸ê°
 	{
-		if (m_ClientSessionPoolIndex.empty()) //¹İ¾à ÇÒ´çÇÒ Ç®ÀÌ ¾ø´Ù¸é, -1 return
+		if (m_ClientSessionPoolIndex.empty()) //ë°˜ì•½ í• ë‹¹í•  í’€ì´ ì—†ë‹¤ë©´, -1 return
 		{
 			return -1;
 		}
 
 		int index = m_ClientSessionPoolIndex.front();
-		m_ClientSessionPoolIndex.pop_front(); // ¾Õ¿¡¼­ ºÎÅÍ »«´Ù.
-		return index; // ÇØ´ç ¼¼¼ÇÀÇ ÀÎµ¦½º¸¦ ¹İÈ¯ÇÑ´Ù. (ÇÒ´çÇÒ ÀÎµ¦½º)
+		m_ClientSessionPoolIndex.pop_front(); // ì•ì—ì„œ ë¶€í„° ëº€ë‹¤.
+		return index; // í•´ë‹¹ ì„¸ì…˜ì˜ ì¸ë±ìŠ¤ë¥¼ ë°˜í™˜í•œë‹¤. (í• ë‹¹í•  ì¸ë±ìŠ¤)
 	}
-	void TcpNetwork::ReleaseSessionIndex(const int index) // Å¬¶óÀÌ¾ğÆ® ¼¼¼ÇÀ» ÇØÁ¦ÇÑ´Ù. -> Ç®¿¡ Ãß°¡ÇÔ.
+	void TcpNetwork::ReleaseSessionIndex(const int index) // í´ë¼ì´ì–¸íŠ¸ ì„¸ì…˜ì„ í•´ì œí•œë‹¤. -> í’€ì— ì¶”ê°€í•¨.
 	{
-		//Å¬¶óÀÌ¾ğÆ® ¼¼¼Ç Ç®¿¡´Ù°¡ ÇØ´ç ÀÎµ¦½º¸¦ Ãß°¡ÇÑ´Ù. ¶ÇÇÑ, ±âº»°ªÀ¸·Î ÃÊ±âÈ­ ÇØÁÜ.
+		//í´ë¼ì´ì–¸íŠ¸ ì„¸ì…˜ í’€ì—ë‹¤ê°€ í•´ë‹¹ ì¸ë±ìŠ¤ë¥¼ ì¶”ê°€í•œë‹¤. ë˜í•œ, ê¸°ë³¸ê°’ìœ¼ë¡œ ì´ˆê¸°í™” í•´ì¤Œ.
 		m_ClientSessionPoolIndex.push_back(index);
 		m_ClientSessionPool[index].Clear();
 	}
 
-	NET_ERROR_CODE TcpNetwork::InitServerSocket() // ¼­¹ö ¿©´Â ±âº» -> ¼ÒÄÏ »ı¼º
+	NET_ERROR_CODE TcpNetwork::InitServerSocket() // ì„œë²„ ì—¬ëŠ” ê¸°ë³¸ -> ì†Œì¼“ ìƒì„±
 	{
-		WORD wVersionRequested = MAKEWORD(2, 2); // 1. WSADATA ÃÊ±âÈ­
+		WORD wVersionRequested = MAKEWORD(2, 2); // 1. WSADATA ì´ˆê¸°í™”
 		WSADATA wsaData;
 		WSAStartup(wVersionRequested, &wsaData);
 
-		m_ServerSockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP); // 2. ¼ÒÄÏ »ı¼º
+		m_ServerSockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP); // 2. ì†Œì¼“ ìƒì„±
 		if (m_ServerSockfd < 0)
 		{
 			return NET_ERROR_CODE::SERVER_SOCKET_CREATE_FAIL;
@@ -254,18 +259,18 @@ namespace NServerNetLib
 
 		auto n = 1;
 		if (setsockopt(m_ServerSockfd, SOL_SOCKET, SO_REUSEADDR, (char*)&n, sizeof(n)) < 0)
-			// set socket optionÀ» ¼³Á¤. -> ¼ÒÄÏÀÇ µ¿ÀÛ ¹æ½ÄÀ» ¼¼¹ĞÇÏ°Ô Á¶Á¤. SO_REUSEADDR¸¦ ¼³Á¤ÇØ¼­, Æ÷Æ®¸¦ »ç¿ëÁß¿¡ Àç»ç¿ë ÇØµµ µÈ´Ù°í ¼±¾ğ.
-			// Æ÷Æ®¸¦ ÀÌ¹Ì »ç¿ëÁßÀÌ¶ó°í ¹ß»ıÇÏ´Â ¿À·ù ¾ø¾Ú. (¼ÒÄÏ, ¿É¼Ç ·¹º§, ¿É¼Ç ÀÌ¸§, ¿É¼Ç°ªÀÌ ÀúÀåµÈ ¹öÆÛ ÁÖ¼Ò, ¿É¼Ç°ªÀÇ Å©±â)
-			//1·Î ¼³Á¤ÇÏ¸é ÄÑ°Ú´Ù´Â ÀÇ¹Ì.
+			// set socket optionì„ ì„¤ì •. -> ì†Œì¼“ì˜ ë™ì‘ ë°©ì‹ì„ ì„¸ë°€í•˜ê²Œ ì¡°ì •. SO_REUSEADDRë¥¼ ì„¤ì •í•´ì„œ, í¬íŠ¸ë¥¼ ì‚¬ìš©ì¤‘ì— ì¬ì‚¬ìš© í•´ë„ ëœë‹¤ê³  ì„ ì–¸.
+			// í¬íŠ¸ë¥¼ ì´ë¯¸ ì‚¬ìš©ì¤‘ì´ë¼ê³  ë°œìƒí•˜ëŠ” ì˜¤ë¥˜ ì—†ì•°. (ì†Œì¼“, ì˜µì…˜ ë ˆë²¨, ì˜µì…˜ ì´ë¦„, ì˜µì…˜ê°’ì´ ì €ì¥ëœ ë²„í¼ ì£¼ì†Œ, ì˜µì…˜ê°’ì˜ í¬ê¸°)
+			//1ë¡œ ì„¤ì •í•˜ë©´ ì¼œê² ë‹¤ëŠ” ì˜ë¯¸.
 
-			//ÇÔ¼ö ¿øÇüÀÌ char*À» ¿ä±¸ÇÔ. ³»ºÎÀûÀ¸·Î´Â intÀÌÁö¸¸, char*Àº ¾î´À ÀÚ·áÇüµµ ¹Ş¾Æ¿Ã ¼ö ÀÖÀ½.
+			//í•¨ìˆ˜ ì›í˜•ì´ char*ì„ ìš”êµ¬í•¨. ë‚´ë¶€ì ìœ¼ë¡œëŠ” intì´ì§€ë§Œ, char*ì€ ì–´ëŠ ìë£Œí˜•ë„ ë°›ì•„ì˜¬ ìˆ˜ ìˆìŒ.
 		{
 			return NET_ERROR_CODE::SERVER_SOCKET_SO_REUSEADDR_FAIL;
 		}
 
-		return NET_ERROR_CODE::NONE; // Àß µÇ¸é ¿¡·¯°¡ ¾øÀ½
+		return NET_ERROR_CODE::NONE; // ì˜ ë˜ë©´ ì—ëŸ¬ê°€ ì—†ìŒ
 	}
-	NET_ERROR_CODE TcpNetwork::BindListen(short port, int backlogCount) //ÁÖ¼Ò ¹ÙÀÎµå
+	NET_ERROR_CODE TcpNetwork::BindListen(short port, int backlogCount) //ì£¼ì†Œ ë°”ì¸ë“œ
 	{
 		struct sockaddr_in server_addr;
 		memset(&server_addr, 0, sizeof(server_addr));
@@ -296,12 +301,12 @@ namespace NServerNetLib
 		return NET_ERROR_CODE::NONE;
 	}
 
-	NET_ERROR_CODE TcpNetwork::NewSession() // accept ºÎºĞ
+	NET_ERROR_CODE TcpNetwork::NewSession() // accept ë¶€ë¶„
 	{
-		auto tryCount = 0; // ³Ê¹« ¸¹ÀÌ accept¸¦ ½ÃµµÇÏÁö ¾Êµµ·Ï ÇÑ´Ù.
+		auto tryCount = 0; // ë„ˆë¬´ ë§ì´ acceptë¥¼ ì‹œë„í•˜ì§€ ì•Šë„ë¡ í•œë‹¤.
 
-		//FD_SETSIZE´Â select ÇÔ¼ö°¡ ÇÑ ¹ø¿¡ °¨½ÃÇÒ ¼ö ÀÖ´Â ¼ÒÄÏÀÇ ¼ö.
-		//Á¢¼Ó ½ÃµµÇÏ´Â ¼ö tryCount°¡ Áõ°¡ÇÔ. ¸ğµÎ Ã³¸®ÇÒ ¶§±îÁö ¹İº¹ÇÔ.
+		//FD_SETSIZEëŠ” select í•¨ìˆ˜ê°€ í•œ ë²ˆì— ê°ì‹œí•  ìˆ˜ ìˆëŠ” ì†Œì¼“ì˜ ìˆ˜.
+		//ì ‘ì† ì‹œë„í•˜ëŠ” ìˆ˜ tryCountê°€ ì¦ê°€í•¨. ëª¨ë‘ ì²˜ë¦¬í•  ë•Œê¹Œì§€ ë°˜ë³µí•¨.
 		do
 		{
 			++tryCount;
@@ -310,7 +315,7 @@ namespace NServerNetLib
 
 			auto client_len = static_cast<int>(sizeof(client_adr));
 			auto client_sockfd = accept(m_ServerSockfd, (struct sockaddr*)&client_adr, &client_len);
-			//client_sockfd¿¡ Å¬¾ÆÀÌ¾ğÆ® ¼ÒÄÏÀ» ÀúÀåÇÔ
+			//client_sockfdì— í´ì•„ì´ì–¸íŠ¸ ì†Œì¼“ì„ ì €ì¥í•¨
 
 			//m_pRefLogger->Write(LOG_TYPE::L_DEBUG, "%s | client_sockfd(%I64u)", __FUNCTION__, client_sockfd);
 			if (client_sockfd == INVALID_SOCKET)
@@ -321,15 +326,15 @@ namespace NServerNetLib
 				}
 				m_pRefLogger->Write(LOG_TYPE::L_ERROR, "%s | Wrong socket cannot accept", __FUNCTION__);
 				return NET_ERROR_CODE::ACCEPT_API_ERROR;
-				//AcceptÇÒ °ÍÀÌ ¾øÀ¸¸é ³¡³².
+				//Acceptí•  ê²ƒì´ ì—†ìœ¼ë©´ ëë‚¨.
 			}
 
-			auto newSessionIndex = AllocClientSessionIndex(); // ¼¼¼Ç ÇÒ´ç -> ³²¾ÆÀÖ´Â ¼¼¼Ç Ç®ÀÇ ÀÎµ¦½º¸¦ ¹İÈ¯ÇÔ. (»ç¿ëÇÒ ÀÚ¸®)
-			if (newSessionIndex < 0) // ÀÚ¸®°¡ ¾øÀ¸¸é. (»õ·Î¿î »õ¼ÇÀ» ÇÒ´çÇÏ´Âµ¥ ½ÇÆĞÇßÀ» °æ¿ì -1À» ¹İÈ¯. ¼¼¼Ç Ç®¸µ¿¡¼­ °ªÀ» ÇÒ´çÇÔ.)
+			auto newSessionIndex = AllocClientSessionIndex(); // ì„¸ì…˜ í• ë‹¹ -> ë‚¨ì•„ìˆëŠ” ì„¸ì…˜ í’€ì˜ ì¸ë±ìŠ¤ë¥¼ ë°˜í™˜í•¨. (ì‚¬ìš©í•  ìë¦¬)
+			if (newSessionIndex < 0) // ìë¦¬ê°€ ì—†ìœ¼ë©´. (ìƒˆë¡œìš´ ìƒˆì…˜ì„ í• ë‹¹í•˜ëŠ”ë° ì‹¤íŒ¨í–ˆì„ ê²½ìš° -1ì„ ë°˜í™˜. ì„¸ì…˜ í’€ë§ì—ì„œ ê°’ì„ í• ë‹¹í•¨.)
 			{
 				m_pRefLogger->Write(LOG_TYPE::L_WARN, "%s | client_sockfd(%I64u)  >= MAX_SESSION", __FUNCTION__, client_sockfd);
 
-				// ´õ ÀÌ»ó ¼ö¿ëÇÒ ¼ö ¾øÀ¸¹Ç·Î ¹Ù·Î Â¥¸¥´Ù.
+				// ë” ì´ìƒ ìˆ˜ìš©í•  ìˆ˜ ì—†ìœ¼ë¯€ë¡œ ë°”ë¡œ ì§œë¥¸ë‹¤.
 				CloseSession(SOCKET_CLOSE_CASE::SESSION_POOL_EMPTY, client_sockfd, -1);
 				return NET_ERROR_CODE::ACCEPT_MAX_SESSION_COUNT;
 			}
@@ -338,13 +343,13 @@ namespace NServerNetLib
 			char clientIP[MAX_IP_LEN] = { 0, };
 			inet_ntop(AF_INET, &(client_adr.sin_addr), clientIP, MAX_IP_LEN - 1);
 
-			SetSockOption(client_sockfd); //ÇØ´ç Å¬¶ó ¼ÒÄÏÀÇ ¿É¼Ç ¼³Á¤
+			SetSockOption(client_sockfd); //í•´ë‹¹ í´ë¼ ì†Œì¼“ì˜ ì˜µì…˜ ì„¤ì •
 
 			SetNonBlockSocket(client_sockfd);
-			//Å¬¶óÀÌ¾ğÆ® ¼ÒÄÏÀ» ³íºí·ÎÅ· ¸ğµå·Î ¿¬°áÇÔ. µ¥ÀÌÅÍ°¡ ¾ø°Å³ª ¹öÆÛ°¡ ²Ë Â÷µµ ±â´Ù¸®Áö ¾Êµµ·Ï ¹İÈ¯µÇµµ·Ï ±â´Ù¸².
-			// ¼­¹ö°¡ ¸ØÃßÁö ¾Ê±â À§ÇØ¼­ Áß¿äÇÔ
+			//í´ë¼ì´ì–¸íŠ¸ ì†Œì¼“ì„ ë…¼ë¸”ë¡œí‚¹ ëª¨ë“œë¡œ ì—°ê²°í•¨. ë°ì´í„°ê°€ ì—†ê±°ë‚˜ ë²„í¼ê°€ ê½‰ ì°¨ë„ ê¸°ë‹¤ë¦¬ì§€ ì•Šë„ë¡ ë°˜í™˜ë˜ë„ë¡ ê¸°ë‹¤ë¦¼.
+			// ì„œë²„ê°€ ë©ˆì¶”ì§€ ì•Šê¸° ìœ„í•´ì„œ ì¤‘ìš”í•¨
 
-			FD_SET(client_sockfd, &m_Readfds);// °¨½ÃÇÏ´Â ¼ÒÄÏ¿¡ client_sockfd¸¦ ³ÖÀ½
+			FD_SET(client_sockfd, &m_Readfds);// ê°ì‹œí•˜ëŠ” ì†Œì¼“ì— client_sockfdë¥¼ ë„£ìŒ
 			//m_pRefLogger->Write(LOG_TYPE::L_DEBUG, "%s | client_sockfd(%I64u)", __FUNCTION__, client_sockfd);
 			ConnectedSession(newSessionIndex, client_sockfd, clientIP);
 
@@ -353,21 +358,21 @@ namespace NServerNetLib
 		return NET_ERROR_CODE::NONE;
 	}
 
-	//ÇØ´ç Å¬¶óÀÌ¾ğÆ® ¿¬°áÀÌ ¼º°øÀûÀ¸·Î ³¡³­ ÈÄ, ¼¼¼ÇÀÇ Á¤º¸¸¦ ÃÊ±âÈ­ ÇÏ°í ¼­¹ö¿¡ µî·ÏÇÔ.
+	//í•´ë‹¹ í´ë¼ì´ì–¸íŠ¸ ì—°ê²°ì´ ì„±ê³µì ìœ¼ë¡œ ëë‚œ í›„, ì„¸ì…˜ì˜ ì •ë³´ë¥¼ ì´ˆê¸°í™” í•˜ê³  ì„œë²„ì— ë“±ë¡í•¨.
 	void TcpNetwork::ConnectedSession(const int sessionIndex, const SOCKET fd, const char* pIP)
 	{
 
 		if (m_MaxSockFD < fd)
 		{
-			m_MaxSockFD = fd; // ¼ÒÄÏ fdÀÇ °¡Àå Å« °ªÀ» ³ÖÀ½.???
+			m_MaxSockFD = fd; // ì†Œì¼“ fdì˜ ê°€ì¥ í° ê°’ì„ ë„£ìŒ.???
 		}
 
-		++m_ConnectSeq; // ½ÃÄı½º ¹øÈ£ Áõ°¡ÇØ¼­ ÇÒ´ç
+		++m_ConnectSeq; // ì‹œí€¸ìŠ¤ ë²ˆí˜¸ ì¦ê°€í•´ì„œ í• ë‹¹
 
-		auto& session = m_ClientSessionPool[sessionIndex]; // ¼¼¼Ç Ç®Áß¿¡ ¼±ÅÃµÈ °Í¿¡´Ù°¡ Á¤º¸¸¦ ³ÖÀ½.
-		session.Seq = m_ConnectSeq; // ½ÃÄı½º ¹øÈ£ ÇÒ´ç
-		session.SocketFD = fd; // ¼ÒÄÏ(fd)µµ ÇÒ´çÇÔ.
-		memcpy(session.IP, pIP, MAX_IP_LEN - 1); // ipµµ ³ÖÀ½
+		auto& session = m_ClientSessionPool[sessionIndex]; // ì„¸ì…˜ í’€ì¤‘ì— ì„ íƒëœ ê²ƒì—ë‹¤ê°€ ì •ë³´ë¥¼ ë„£ìŒ.
+		session.Seq = m_ConnectSeq; // ì‹œí€¸ìŠ¤ ë²ˆí˜¸ í• ë‹¹
+		session.SocketFD = fd; // ì†Œì¼“(fd)ë„ í• ë‹¹í•¨.
+		memcpy(session.IP, pIP, MAX_IP_LEN - 1); // ipë„ ë„£ìŒ
 
 		++m_ConnectedSessionCount;
 
@@ -382,14 +387,14 @@ namespace NServerNetLib
 		ling.l_onoff = 0;
 		ling.l_linger = 0;
 		setsockopt(fd, SOL_SOCKET, SO_LINGER, (char*)&ling, sizeof(ling));
-		//¼ÒÄÏÀ» ´İÀ» ¶§ ºí·ÎÅ· µÇÁö ¾Ê¾Æ¼­, ¼­¹öÀÇ ÀÀ´ä¼º À¯ÁöÇÏ±â À§ÇØ »ç¿ë
+		//ì†Œì¼“ì„ ë‹«ì„ ë•Œ ë¸”ë¡œí‚¹ ë˜ì§€ ì•Šì•„ì„œ, ì„œë²„ì˜ ì‘ë‹µì„± ìœ ì§€í•˜ê¸° ìœ„í•´ ì‚¬ìš©
 
 		int size1 = m_Config.MaxClientSockOptRecvBufferSize;
 		int size2 = m_Config.MaxClientSockOptSendBufferSize;
 		setsockopt(fd, SOL_SOCKET, SO_RCVBUF, (char*)&size1, sizeof(size1));
-		//¼ö½Å ¹öÆÛÀÇ Å©±â ¼³Á¤ MaxClientSockOptRecvBufferSize
+		//ìˆ˜ì‹  ë²„í¼ì˜ í¬ê¸° ì„¤ì • MaxClientSockOptRecvBufferSize
 		setsockopt(fd, SOL_SOCKET, SO_SNDBUF, (char*)&size2, sizeof(size2));
-		//¼Û½Å ¹öÆÛ Å©±â ¼³Á¤
+		//ì†¡ì‹  ë²„í¼ í¬ê¸° ì„¤ì •
 	}
 
 	void TcpNetwork::CloseSession(const SOCKET_CLOSE_CASE closeCase, const SOCKET sockFD, const int sessionIndex)
@@ -428,6 +433,7 @@ namespace NServerNetLib
 
 		int recvPos = 0;
 
+		//ë²„í¼ì— ì´ì „ì— ì½ì§€ ì•Šì€ ë°ì´í„°ê°€ ë‚¨ì•„ ìˆëŠ” ê²½ìš° ì•ë‹¹ê¹€. ì§€ì—° ì••ì¶• ë°©ì‹. (ì´ì „ì— íŒ¨í‚·ì„ ì½ì„ ë•Œ ë¯¸ë¦¬ ë²„í¼ ì••ì¶•ì„ í•˜ëŠ” ë°©ì‹ì€ ì¦‰ì‹œ ì••ì¶•)
 		if (session.RemainingDataSize > 0)
 		{
 			memcpy(session.pRecvBuffer, &session.pRecvBuffer[session.PrevReadPosInRecvBuffer], session.RemainingDataSize);
@@ -459,6 +465,7 @@ namespace NServerNetLib
 		return NET_ERROR_CODE::NONE;
 	}
 
+	//ë²„í¼ ì•ˆì˜ íŒ¨í‚·ì´ë‘ ë°”ë””ë¥¼ ë¶„ë¦¬í•¨. -> AddPacketQueueì—ì„œ ì²˜ë¦¬
 	NET_ERROR_CODE TcpNetwork::RecvBufferProcess(const int sessionIndex)
 	{
 		auto& session = m_ClientSessionPool[sessionIndex];
@@ -475,7 +482,7 @@ namespace NServerNetLib
 
 			if (bodySize > 0)
 			{
-				if (bodySize > (dataSize - readPos))
+				if (bodySize > (dataSize - readPos)) // ë°”ë””ê¹Œì§€ ì „ë¶€ ë„ì°©í–ˆëŠ”ì§€ í™•ì¸.
 				{
 					readPos -= PACKET_HEADER_SIZE;
 					break;
@@ -483,7 +490,7 @@ namespace NServerNetLib
 
 				if (bodySize > MAX_PACKET_BODY_SIZE)
 				{
-					// ´õ ÀÌ»ó ÀÌ ¼¼¼Ç°ú´Â ÀÛ¾÷À» ÇÏÁö ¾ÊÀ» ¿¹Á¤. Å¬¶óÀÌ¾ğÆ® º¸°í ³ª°¡¶ó°í ÇÏ´ø°¡ Á÷Á¢ Â©¶ó¾ß ÇÑ´Ù.
+					// ë” ì´ìƒ ì´ ì„¸ì…˜ê³¼ëŠ” ì‘ì—…ì„ í•˜ì§€ ì•Šì„ ì˜ˆì •. í´ë¼ì´ì–¸íŠ¸ ë³´ê³  ë‚˜ê°€ë¼ê³  í•˜ë˜ê°€ ì§ì ‘ ì§¤ë¼ì•¼ í•œë‹¤.
 					return NET_ERROR_CODE::RECV_CLIENT_MAX_PACKET;
 				}
 			}
@@ -560,7 +567,7 @@ namespace NServerNetLib
 		NetError result(NET_ERROR_CODE::NONE);
 		auto rfds = m_Readfds;
 
-		// Á¢¼Ó µÇ¾î ÀÖ´ÂÁö ¶Ç´Â º¸³¾ µ¥ÀÌÅÍ°¡ ÀÖ´ÂÁö
+		// ì ‘ì† ë˜ì–´ ìˆëŠ”ì§€ ë˜ëŠ” ë³´ë‚¼ ë°ì´í„°ê°€ ìˆëŠ”ì§€
 		if (size <= 0)
 		{
 			return result;

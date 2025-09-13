@@ -1,6 +1,6 @@
-#pragma once
+ï»¿#pragma once
 #include <string>
-
+#include "Common.h"
 
 class User
 {
@@ -9,6 +9,13 @@ public:
 		NONE = 0,
 		LOGIN = 1,
 		ROOM = 2,
+	};
+
+	enum class BOT_STATE {
+		NONE,
+		IN_LOBBY,
+		IN_MATCHMAKING,
+		IN_GAME,
 	};
 
 public:
@@ -29,21 +36,25 @@ public:
 		m_RoomIndex = -1;
 	}
 
-	void Set(const int sessionIndex, const char* pszID)
+	void Set(const int sessionIndex, const char* pszID, const int32_t userHandle)
 	{
 		m_IsConfirm = true;
 		m_CurDomainState = DOMAIN_STATE::LOGIN;
-
 		m_SessionIndex = sessionIndex;
 		m_ID = pszID;
+		m_UserHandle = userHandle; // [ì¶”ê°€] ì „ë‹¬ë°›ì€ í•¸ë“¤ ê°’ì„ ë©¤ë²„ ë³€ìˆ˜ì— ì €ì¥
+	}
 
+	void SetConfirm(bool value)
+	{
+		m_IsConfirm = value;
 	}
 
 	short GetIndex() { return m_Index; }
 
-	int GetSessioIndex() { return m_SessionIndex; }
+	int GetSessionIndex() { return m_SessionIndex; }
 
-	std::string& GetID() { return m_ID; }
+	const std::string& GetID() { return m_ID; }
 
 	bool IsConfirm() { return m_IsConfirm; }
 
@@ -62,18 +73,42 @@ public:
 	bool IsCurDomainInRoom() {
 		return m_CurDomainState == DOMAIN_STATE::ROOM ? true : false;
 	}
+	int32_t GetUserHandle() const { return m_UserHandle; }
+	const Vec2D& GetPosition() const { return m_Position; }
+	void SetPosition(const Vec2D& pos) { m_Position = pos; }
+	
+	bool IsBot() const { return m_BotState != BOT_STATE::NONE; }
+	BOT_STATE GetBotState() const { return m_BotState; }
+	void SetBotState(BOT_STATE newState) { m_BotState = newState; }
 
+	float& GetTimeUntilNextAction() { return m_TimeUntilNextAction; }
 
+	void SetTeam(const int teamId) { m_team = teamId; }
+	int GetTeam() const { return m_team; }
+
+	void SetUserName(const std::string nickname) { m_nickName = nickname; }
+	std::string GetUserName() const { return m_nickName; }
+	bool IsDead() const { return m_isDead; }
+	void Kill() { m_isDead = true; }
+	void Respawn() { m_isDead = false; }
+
+private:
+	BOT_STATE m_BotState = BOT_STATE::NONE;
+	float m_TimeUntilNextAction = 0.0f; // ë‹¤ìŒ í–‰ë™ê¹Œì§€ ë‚¨ì€ ì‹œê°„
 protected:
+
+	// ì„œë²„ ê´€ë ¨ ë³€ìˆ˜
 	short m_Index = -1;
-
-	int m_SessionIndex = -1; // ³×Æ®¿öÅ©ÂÊ ÀÎµ¦½º ¹øÈ£
-
-	std::string m_ID; // ·Î±×ÀÎÇÒ ¶§ ¾ÆÀÌµğ
-
+	int m_SessionIndex = -1; 
+	std::string m_ID; // ë¡œê·¸ì¸ ID
 	bool m_IsConfirm = false;
+	DOMAIN_STATE m_CurDomainState = DOMAIN_STATE::NONE;
 
-	DOMAIN_STATE m_CurDomainState = DOMAIN_STATE::NONE; // ·Î±×ÀÎ Çß´ÂÁö ¹æ¿¡ µé¾î°¬´ÂÁö.
-
-	short m_RoomIndex = -1; // ¹æÀÇ ¹øÈ£
+	// ë°© ê´€ë ¨ ë³€ìˆ˜
+	short m_RoomIndex = -1; // ë°©ì˜ ë²ˆí˜¸
+	int32_t m_UserHandle = -1; // ì¸ê²Œì„ ID
+	Vec2D m_Position;
+	int m_team = -1;
+	std::string m_nickName = "";
+	bool m_isDead = true;
 };

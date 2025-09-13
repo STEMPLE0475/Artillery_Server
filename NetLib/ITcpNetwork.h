@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Define.h"
 #include "ServerNetErrorCode.h"
@@ -21,7 +21,7 @@ namespace NServerNetLib
 
 		virtual void Run() {}
 
-		virtual RecvPacketInfo GetPacketInfo() { return RecvPacketInfo(); }
+		virtual RecvPacketInfo DispatchPacket() { return RecvPacketInfo(); }
 
 		virtual void Release() {}
 

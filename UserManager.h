@@ -1,12 +1,14 @@
-#pragma once
+ï»¿#pragma once
 #include <unordered_map>
 #include <deque>
 #include <string>
 #include <vector>
+#include <tuple>
 
-#include "ErrorCode.h"
+#include "ProtocolCommon.h"
 
 class User;
+class DBManager;
 
 class UserManager
 {
@@ -14,26 +16,34 @@ public:
 	UserManager();
 	virtual ~UserManager();
 
-	void Init(const int maxUserCount);
+	void Init(const int maxUserCount, DBManager* dbManager);
 
-	ERROR_CODE AddUser(const int sessionIndex, const char* pszID);
-	ERROR_CODE RemoveUser(const int sessionIndex); // Á¢¼Ó ²÷¾îÁö¸é ÀÎµ¦½º ¹İÈ¯
-
+	ERROR_CODE AddUser(const int sessionIndex, const uint8_t* pszID);
+	ERROR_CODE RemoveUser(const int sessionIndex); // ì ‘ì† ëŠì–´ì§€ë©´ ì¸ë±ìŠ¤ ë°˜í™˜
 	std::tuple<ERROR_CODE, User*> GetUser(const int sessionIndex);
+
+	ERROR_CODE RegisterUser(const std::string& id, const std::string& pw, const std::string& nick);
+	ERROR_CODE TryLogin(const int sessionIndex, const std::string& id, const std::string& pw);
+	User* FindUser(const int sessionIndex);
+	std::tuple<ERROR_CODE, User*> AddNewBot();
 
 
 private:
 	User* AllocUserObjPoolIndex();
 	void ReleaseUserObjPoolIndex(const int index);
 
-	User* FindUser(const int sessionIndex);
+	
 	User* FindUser(const char* pszID);
 
 private:
-	std::vector<User> m_UserObjPool; // ¹Ì¸® °´Ã¼ Ç®À» ¸¸µéÀ½. 
-	std::deque<int> m_UserObjPoolIndex; // »ç¿ëÇÏÁö ¾Ê´Â °´Ã¼ÀÇ ÀÎµ¦½º
+	std::vector<User> m_UserObjPool; // ë¯¸ë¦¬ ê°ì²´ í’€ì„ ë§Œë“¤ìŒ. 
+	std::deque<int> m_UserObjPoolIndex; // ì‚¬ìš©í•˜ì§€ ì•ŠëŠ” ê°ì²´ì˜ ì¸ë±ìŠ¤
 
 	std::unordered_map<int, User*> m_UserSessionDic;
-	std::unordered_map<const char*, User*> m_UserIDDic;
+	std::unordered_map<std::string, User*> m_UserIDDic;
+
+	DBManager* m_pDBManager = nullptr;
+	int m_BotUIDCounter = 0;
+	int m_UserHandleCounter = 0;
 
 };

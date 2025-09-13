@@ -1,10 +1,11 @@
-#pragma once
+﻿#pragma once
 
 #include <vector>
 #include <string>
 #include <memory>
 
 #include "User.h"
+#include "ProtocolCommon.h"
 
 
 namespace NServerNetLib { class ITcpNetwork; }
@@ -33,10 +34,25 @@ public:
 
 	bool IsUsed() { return m_IsUsed; }
 
+	bool IsStart() { return m_IsStart; }
+
 	short MaxUserCount() { return m_MaxUserCount; }
 
 	short GetUserCount() { return (short)m_UserList.size(); }
 
+	bool IsUserFull() { return MaxUserCount() == GetUserCount(); }
+
+	void EnableRoom();
+
+	void EnterUser(User* pUser);
+	void LeaveUser(User* pUser);
+	const std::vector<User*>& GetUserList(); // &은 뭐임.
+
+	void StartGame();
+
+	void BroadcastPacket(const short packetId, char* pPacket, const int packetSize);
+
+	void EndGame();
 
 private:
 	ILog* m_pRefLogger;
@@ -46,7 +62,7 @@ private:
 	short m_MaxUserCount;
 
 	bool m_IsUsed = false;
-	std::vector<User*> m_UserList;
+	bool m_IsStart = false;
 
-	//Game* m_pGame = nullptr;
+	std::vector<User*> m_UserList;
 };
