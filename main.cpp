@@ -24,7 +24,7 @@ int main()
 		if (input == 'b')
 		{
 			// 'b'를 누르면 Server 객체의 CreateBots 함수를 호출합니다.
-			server.CreateBots(4);
+			server.CreateBots(1024);
 		}
 		else if (input == 'q')
 		{

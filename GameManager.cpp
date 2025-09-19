@@ -49,12 +49,12 @@ void GameManager::ProcessMatchSuccess(Room* pRoom)
 	// 안정성을 위해 유저 수를 다시 한번 확인합니다.
 	if (userList.size() != MAX_PLAYERS_PER_ROOM)
 	{
-		m_pRefLogger->Write(LOG_TYPE::L_ERROR, "CRITICAL ERROR: Room:%d is full but user count is not 4 (%d). Aborting match.",
+		m_pRefLogger->Write(LOG_TYPE::L_ERROR, "CRITICAL ERROR: Room: %d is full but user count is not 4 (%d). Aborting match.",
 			pRoom->GetIndex(), (int)userList.size());
 		return;
 	}
 
-	m_pRefLogger->Write(LOG_TYPE::L_INFO, "Room:%d is full. Match Success!", pRoom->GetIndex());
+	m_pRefLogger->Write(LOG_TYPE::L_INFO, "Room: %d is full. Match Success!", pRoom->GetIndex());
 
 	// 모든 유저의 스폰 정보를 먼저 채웁니다.
 	PlayerSpawnInfo spawnInfos[MAX_PLAYERS_PER_ROOM];
@@ -138,7 +138,7 @@ void GameManager::OnFireRequest(const int sessionIndex, const PktFireStartReq* r
 	// ... 나머지 정보 채우기 ...
 
 	pRoom->BroadcastPacket((short)PACKET_ID::PROJECTILE_CREATE_NTF, (char*)&ntfPkt, sizeof(ntfPkt));
-	m_pRefLogger->Write(LOG_TYPE::L_INFO, "User:%s fired Projectile:%d", pUser->GetID().c_str(), newProjectile.ProjectileId);
+	m_pRefLogger->Write(LOG_TYPE::L_INFO, "Room: %d User:%s fired Projectile:%d", pRoom->GetIndex() , pUser->GetID().c_str(), newProjectile.ProjectileId);
 }
 
 
@@ -170,12 +170,12 @@ void GameManager::OnMatchRequest(const int sessionIndex)
 		return;
 	}
 
-	m_pRefLogger->Write(LOG_TYPE::L_DEBUG, "User(Sess:%d) attempting to enter Room:%d. Current users: %d/%d. IsStart?:%d",
+	m_pRefLogger->Write(LOG_TYPE::L_DEBUG, "User(Sess:%d) attempting to enter Room: %d. Current users: %d/%d. IsStart?:%d",
 		sessionIndex, pRoom->GetIndex(), pRoom->GetUserCount(), pRoom->MaxUserCount(), (int)pRoom->IsStart());
 	// 4. 유저를 방에 입장시키고 상태 변경
 	pUser->EnterRoom(pRoom->GetIndex());
 	pRoom->EnterUser(pUser);
-	m_pRefLogger->Write(LOG_TYPE::L_INFO, "User:%s (Session:%d) entered Room:%d",
+	m_pRefLogger->Write(LOG_TYPE::L_INFO, "User:%s (Session:%d) entered Room: %d",
 		pUser->GetID().c_str(), sessionIndex, pRoom->GetIndex());
 	// 5. 방이 꽉 찼는지 확인하여 게임 시작 또는 대기 응답 결정
 	if (pRoom->IsUserFull())
@@ -205,8 +205,8 @@ void GameManager::Tick(const float deltaTime)
 		// 2. 충돌 판정
 		if (CheckCollision(projectile))
 		{
-			m_pRefLogger->Write(LOG_TYPE::L_INFO, "Projectile:%d exploded at (%.2f, %.2f)",
-				projectile.ProjectileId, projectile.Position.X, projectile.Position.Y);
+			m_pRefLogger->Write(LOG_TYPE::L_INFO, "Room: %d Projectile:%d exploded at (%.2f, %.2f)",
+				projectile.pOwnerRoom->GetIndex(), projectile.ProjectileId, projectile.Position.X, projectile.Position.Y);
 
 			// 충돌시 폭발
 			PktProjectileExplodeNtf ntfPkt;
@@ -215,8 +215,8 @@ void GameManager::Tick(const float deltaTime)
 			ntfPkt.Y = projectile.Position.Y;
 
 			projectile.pOwnerRoom->BroadcastPacket((short)PACKET_ID::PROJECTILE_EXPLODE_NTF, (char*)&ntfPkt, sizeof(ntfPkt));
-			m_pRefLogger->Write(LOG_TYPE::L_INFO, "Projectile:%d exploded at (%.2f, %.2f)",
-				projectile.ProjectileId, projectile.Position.X, projectile.Position.Y);
+			m_pRefLogger->Write(LOG_TYPE::L_INFO, "Room: %d Projectile:%d exploded at (%.2f, %.2f)",
+				projectile.pOwnerRoom->GetIndex(),projectile.ProjectileId, projectile.Position.X, projectile.Position.Y);
 
 			// 폭발 데미지
 			ApplyExplosionDamage(projectile);
@@ -240,8 +240,7 @@ void GameManager::SimulateProjectile(ServerProjectile& projectile, const float d
 	projectile.Position.X += projectile.Velocity.X * deltaTime;
 	projectile.Position.Y += projectile.Velocity.Y * deltaTime;
 
-	m_pRefLogger->Write(LOG_TYPE::L_DEBUG, "Projectile:%d Pos(%.2f, %.2f)", 
-	                    projectile.ProjectileId, projectile.Position.X, projectile.Position.Y);
+	//m_pRefLogger->Write(LOG_TYPE::L_DEBUG, "Projectile:%d Pos(%.2f, %.2f)", projectile.ProjectileId, projectile.Position.X, projectile.Position.Y);
 
 }
 
@@ -278,8 +277,8 @@ void GameManager::ApplyExplosionDamage(const ServerProjectile& projectile)
 		if (distSq <= EXPLOSION_RADIUS_SQ)
 		{
 			pVictim->Kill();
-			m_pRefLogger->Write(LOG_TYPE::L_INFO, "User:%s has been killed by Projectile:%d",
-				pVictim->GetID().c_str(), projectile.ProjectileId);
+			m_pRefLogger->Write(LOG_TYPE::L_INFO, "Room: %d User:%s has been killed by Projectile:%d",
+				projectile.pOwnerRoom->GetIndex() , pVictim->GetID().c_str(), projectile.ProjectileId);
 
 			PktPlayerDeadNtf deadNtf;
 			deadNtf.VictimHandle = pVictim->GetUserHandle();
@@ -326,14 +325,17 @@ void GameManager::CheckGameEndCondition(Room* pRoom)
 
 	if (winningTeam != -1)
 	{
-		m_pRefLogger->Write(LOG_TYPE::L_INFO, "Game Over in Room:%d. Winning Team: %d", pRoom->GetIndex(), winningTeam);
+		m_pRefLogger->Write(LOG_TYPE::L_INFO, "Game Over in Room: %d. Winning Team: %d", pRoom->GetIndex(), winningTeam);
 
 		PktGameEndNtf endNtf;
 		endNtf.WinningTeam = (uint8_t)winningTeam;
-		endNtf.TeamAScore = (uint16_t)aliveTeamA;
+		endNtf.TeamAScore = (uint16_t)aliveTeamA; 
 		endNtf.TeamBScore = (uint16_t)aliveTeamB;
 		pRoom->BroadcastPacket((short)PACKET_ID::GAME_END_NTF, (char*)&endNtf, sizeof(endNtf));
-
+		for (const auto& user : pRoom->GetUserList())
+		{
+			user->LeaveRoom();
+		}
 		pRoom->EndGame();
 	}
 }

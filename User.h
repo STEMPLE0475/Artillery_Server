@@ -66,6 +66,11 @@ public:
 		m_CurDomainState = DOMAIN_STATE::ROOM;
 	}
 
+	void LeaveRoom() {
+		m_RoomIndex = -1;
+		m_CurDomainState = DOMAIN_STATE::LOGIN;
+	}
+
 	bool IsCurDomainInLogIn() {
 		return m_CurDomainState == DOMAIN_STATE::LOGIN ? true : false;
 	}
